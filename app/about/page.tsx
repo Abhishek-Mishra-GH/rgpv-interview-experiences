@@ -1,360 +1,171 @@
-"use client"
-
-import { useState, useEffect } from "react"
-import { ExperienceCard } from "@/components/experience-card"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, AlertCircle, RefreshCw, Database, Play } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Github, Linkedin, Twitter, Heart } from "lucide-react"
+import Link from "next/link"
+import Image from "next/image"
 
-interface Experience {
-  id: string
-  title: string
-  company: string
-  position: string
-  content: string
-  salary?: string
-  location?: string
-  difficulty: string
-  outcome: string
-  tips?: string
-  isAnonymous: boolean
-  createdAt: string
-  author: {
-    name: string
-    isAnonymous: boolean
-  }
-  _count: {
-    likes: number
-    saves: number
-  }
-}
-
-interface ApiResponse {
-  experiences: Experience[]
-  pagination: {
-    page: number
-    limit: number
-    total: number
-    pages: number
-  }
-  error?: string
-  message?: string
-  details?: string
-}
-
-export default function Home() {
-  const [experiences, setExperiences] = useState<Experience[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
-  const [debugInfo, setDebugInfo] = useState<any>(null)
-  const [page, setPage] = useState(1)
-  const [sortBy, setSortBy] = useState("recent")
-  const [hasMore, setHasMore] = useState(true)
-  const [healthStatus, setHealthStatus] = useState<any>(null)
-  const [isFixing, setIsFixing] = useState(false)
-
-  const checkHealth = async () => {
-    try {
-      const response = await fetch("/api/health")
-      const health = await response.json()
-      setHealthStatus(health)
-      console.log("🏥 Health check:", health)
-    } catch (error) {
-      console.error("❌ Health check failed:", error)
-      setHealthStatus({ status: "error", error: "Failed to check health" })
-    }
-  }
-
-  const runPrismaSetup = async () => {
-    setIsFixing(true)
-    try {
-      const response = await fetch("/api/prisma/setup", { method: "POST" })
-      const result = await response.json()
-      console.log("🔧 Prisma setup result:", result)
-
-      if (result.success) {
-        // Refresh health status and try fetching data again
-        await checkHealth()
-        await fetchExperiences(1, sortBy, true)
-      } else {
-        setError(`Prisma setup failed at step '${result.step}': ${result.details || result.error}`)
-      }
-    } catch (error) {
-      console.error("❌ Failed to run Prisma setup:", error)
-      setError("Failed to run Prisma setup")
-    } finally {
-      setIsFixing(false)
-    }
-  }
-
-  const fetchExperiences = async (pageNum: number, sort: string, reset = false) => {
-    try {
-      setError("")
-      console.log(`🔍 Fetching experiences: page=${pageNum}, sort=${sort}, reset=${reset}`)
-
-      const url = `/api/experiences?page=${pageNum}&sortBy=${sort}`
-      console.log("📡 Request URL:", url)
-
-      const response = await fetch(url)
-      console.log("📡 Response status:", response.status, response.statusText)
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data: ApiResponse = await response.json()
-      console.log("📊 API Response:", data)
-
-      setDebugInfo({
-        url,
-        status: response.status,
-        dataKeys: Object.keys(data),
-        experienceCount: data.experiences?.length || 0,
-        pagination: data.pagination,
-        hasError: !!data.error,
-        message: data.message,
-      })
-
-      if (data.error) {
-        throw new Error(data.error + (data.details ? `: ${data.details}` : ""))
-      }
-
-      const experiencesData = data.experiences || []
-      const paginationData = data.pagination || { page: 1, pages: 1, total: 0, limit: 10 }
-
-      if (reset) {
-        setExperiences(experiencesData)
-      } else {
-        setExperiences((prev) => [...prev, ...experiencesData])
-      }
-
-      setHasMore(pageNum < paginationData.pages)
-
-      if (data.message) {
-        setError(data.message)
-      }
-    } catch (error) {
-      console.error("❌ Failed to fetch experiences:", error)
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
-      setError(`Failed to load experiences: ${errorMessage}`)
-      if (reset) {
-        setExperiences([])
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    console.log("🚀 Component mounted, checking health and fetching data")
-    checkHealth()
-    setLoading(true)
-    setPage(1)
-    fetchExperiences(1, sortBy, true)
-  }, [sortBy])
-
-  const loadMore = () => {
-    const nextPage = page + 1
-    setPage(nextPage)
-    fetchExperiences(nextPage, sortBy)
-  }
-
-  const retryFetch = () => {
-    setLoading(true)
-    setError("")
-    setPage(1)
-    fetchExperiences(1, sortBy, true)
-  }
-
-  const initializeDatabase = async () => {
-    try {
-      setLoading(true)
-      setError("")
-      console.log("🔧 Initializing database...")
-
-      const response = await fetch("/api/init-db", { method: "POST" })
-      const result = await response.json()
-
-      if (result.success) {
-        await checkHealth()
-        await fetchExperiences(1, sortBy, true)
-      } else {
-        setError(`Failed to initialize database: ${result.details || result.error}`)
-      }
-    } catch (error) {
-      console.error("❌ Failed to initialize database:", error)
-      setError("Failed to initialize database")
-    }
-  }
-
-  const hasSystemIssues =
-    healthStatus && (!healthStatus.checks?.prismaImport || !healthStatus.checks?.databaseConnection)
-
+export default function About() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Interview Experiences</h1>
-        <p className="text-gray-600">Discover and share interview experiences from RGPV students</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">About RGPV Interview Experiences</h1>
+        <p className="text-gray-600">A platform built by students, for students</p>
       </div>
 
-      {/* Health Status Card */}
-      {healthStatus && (
-        <Card className="mb-6">
+      <div className="grid gap-8">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5" />
-              System Status
+              <Heart className="h-5 w-5 text-red-500" />
+              Our Mission
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Database:</span>
-                <span className={`text-sm ${healthStatus.status === "healthy" ? "text-green-600" : "text-red-600"}`}>
-                  {healthStatus.database || healthStatus.status}
-                </span>
+            <p className="text-gray-700 leading-relaxed">
+              RGPV Interview Experiences is a platform designed to help students from Rajiv Gandhi Proudyogiki
+              Vishwavidyalaya (RGPV) share their interview experiences and learn from each other. We believe that
+              knowledge sharing is the key to success, and by creating a community where students can openly discuss
+              their interview journeys, we can help everyone prepare better for their career opportunities.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Features</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <h4 className="font-semibold text-gray-900">📝 Share Experiences</h4>
+                <p className="text-sm text-gray-600">Share your interview experiences anonymously or with your name</p>
+              </div>
+              <div className="space-y-2">
+                <h4 className="font-semibold text-gray-900">❤️ Like & Save</h4>
+                <p className="text-sm text-gray-600">Like helpful experiences and save them for later reference</p>
+              </div>
+              <div className="space-y-2">
+                <h4 className="font-semibold text-gray-900">🏆 Weekly Rankings</h4>
+                <p className="text-sm text-gray-600">Discover the most popular experiences each week</p>
+              </div>
+              <div className="space-y-2">
+                <h4 className="font-semibold text-gray-900">🔒 Anonymous Access</h4>
+                <p className="text-sm text-gray-600">Access the platform without creating an account</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-center">Meet the Creators</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="text-center">
+                <div className="mb-4">
+                  <Image
+                    src="/placeholder.svg?height=120&width=120"
+                    alt="Nilesh Dhakad"
+                    width={120}
+                    height={120}
+                    className="rounded-full mx-auto border-4 border-blue-200"
+                  />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Nilesh Dhakad</h3>
+                <p className="text-gray-600 mb-4">Full Stack Developer & RGPV Student</p>
+                <div className="flex justify-center gap-3">
+                  <Link href="https://github.com/nileshdhakad" target="_blank">
+                    <Button variant="outline" size="sm">
+                      <Github className="h-4 w-4 mr-2" />
+                      GitHub
+                    </Button>
+                  </Link>
+                  <Link href="https://linkedin.com/in/nileshdhakad" target="_blank">
+                    <Button variant="outline" size="sm">
+                      <Linkedin className="h-4 w-4 mr-2" />
+                      LinkedIn
+                    </Button>
+                  </Link>
+                  <Link href="https://twitter.com/nileshdhakad" target="_blank">
+                    <Button variant="outline" size="sm">
+                      <Twitter className="h-4 w-4 mr-2" />
+                      Twitter
+                    </Button>
+                  </Link>
+                </div>
               </div>
 
-              {healthStatus.data && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Data:</span>
-                  <span className="text-sm text-gray-600">
-                    {healthStatus.data.experiences} experiences, {healthStatus.data.users} users
-                  </span>
+              <div className="text-center">
+                <div className="mb-4">
+                  <Image
+                    src="/placeholder.svg?height=120&width=120"
+                    alt="Abhishek Mishra"
+                    width={120}
+                    height={120}
+                    className="rounded-full mx-auto border-4 border-green-200"
+                  />
                 </div>
-              )}
-
-              {healthStatus.checks && (
-                <div className="space-y-1">
-                  <div className="text-sm font-medium">System Checks:</div>
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    <div className={healthStatus.checks.prismaImport ? "text-green-600" : "text-red-600"}>
-                      Prisma Import: {healthStatus.checks.prismaImport ? "✓" : "✗"}
-                    </div>
-                    <div className={healthStatus.checks.databaseConnection ? "text-green-600" : "text-red-600"}>
-                      DB Connection: {healthStatus.checks.databaseConnection ? "✓" : "✗"}
-                    </div>
-                    <div className={healthStatus.checks.basicQuery ? "text-green-600" : "text-red-600"}>
-                      Basic Query: {healthStatus.checks.basicQuery ? "✓" : "✗"}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {hasSystemIssues && (
-                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded">
-                  <div className="text-sm font-medium text-red-800 mb-2">🚨 System Issues Detected</div>
-                  <div className="text-xs text-red-700 mb-3">
-                    {healthStatus.troubleshooting?.issue || "Multiple system components are failing"}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={runPrismaSetup} disabled={isFixing}>
-                      {isFixing ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Play className="h-3 w-3 mr-1" />}
-                      Run Setup
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Abhishek Mishra</h3>
+                <p className="text-gray-600 mb-4">Backend Developer & RGPV Student</p>
+                <div className="flex justify-center gap-3">
+                  <Link href="https://github.com/abhishekmishra" target="_blank">
+                    <Button variant="outline" size="sm">
+                      <Github className="h-4 w-4 mr-2" />
+                      GitHub
                     </Button>
-                    <Button size="sm" variant="outline" onClick={checkHealth}>
-                      <RefreshCw className="h-3 w-3 mr-1" />
-                      Recheck
+                  </Link>
+                  <Link href="https://linkedin.com/in/abhishekmishra" target="_blank">
+                    <Button variant="outline" size="sm">
+                      <Linkedin className="h-4 w-4 mr-2" />
+                      LinkedIn
                     </Button>
-                  </div>
+                  </Link>
+                  <Link href="https://twitter.com/abhishekmishra" target="_blank">
+                    <Button variant="outline" size="sm">
+                      <Twitter className="h-4 w-4 mr-2" />
+                      Twitter
+                    </Button>
+                  </Link>
                 </div>
-              )}
+              </div>
             </div>
+
+            {/* <div className="mt-8 text-center">
+              <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-6">
+                <h4 className="text-lg font-semibold text-gray-900 mb-2">Thank You for Your Dedication! 🙏</h4>
+                <p className="text-gray-700">
+                  We appreciate Nilesh and Abhishek for their hard work in creating this platform to help fellow RGPV
+                  students succeed in their career journeys. Their commitment to building a supportive community is
+                  truly commendable.
+                </p>
+              </div>
+            </div> */}
           </CardContent>
         </Card>
-      )}
 
-      <div className="mb-6 flex justify-between items-center">
-        <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Sort by" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="recent">Most Recent</SelectItem>
-            <SelectItem value="popular">Most Popular</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Button variant="outline" size="sm" onClick={checkHealth}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Check Status
-        </Button>
-      </div>
-
-      {error && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="flex items-center justify-between">
-            <span>{error}</span>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={retryFetch}>
-                Retry
-              </Button>
-              {error.includes("No experiences found") && (
-                <Button variant="outline" size="sm" onClick={initializeDatabase}>
-                  Initialize Database
+        {/* <Card>
+          <CardHeader>
+            <CardTitle>Get Involved</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-700 mb-4">
+              Want to contribute to this project or have suggestions for improvement? We'd love to hear from you!
+            </p>
+            <div className="flex flex-wrap gap-4">
+              <Link href="/share">
+                <Button>Share Your Experience</Button>
+              </Link>
+              <Link href="https://github.com/rgpv-interview-experiences" target="_blank">
+                <Button variant="outline">
+                  <Github className="h-4 w-4 mr-2" />
+                  Contribute on GitHub
                 </Button>
-              )}
+              </Link>
             </div>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Debug Information (only in development) */}
-      {process.env.NODE_ENV === "development" && debugInfo && (
-        <Card className="mb-6 bg-gray-50">
-          <CardContent className="p-4">
-            <details>
-              <summary className="cursor-pointer text-sm font-medium">Debug Information</summary>
-              <pre className="mt-2 text-xs overflow-auto">{JSON.stringify(debugInfo, null, 2)}</pre>
-            </details>
           </CardContent>
-        </Card>
-      )}
-
-      {loading && experiences.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-4" />
-          <p className="text-gray-600">Loading experiences...</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {experiences.map((experience) => (
-            <ExperienceCard
-              key={experience.id}
-              experience={experience}
-              onUpdate={() => fetchExperiences(1, sortBy, true)}
-            />
-          ))}
-
-          {hasMore && !error && (
-            <div className="flex justify-center py-6">
-              <Button onClick={loadMore} variant="outline" disabled={loading}>
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  "Load More"
-                )}
-              </Button>
-            </div>
-          )}
-
-          {experiences.length === 0 && !loading && !error && (
-            <div className="text-center py-12">
-              <p className="text-gray-500 mb-4">No experiences found. Be the first to share!</p>
-              <Button onClick={initializeDatabase} variant="outline">
-                <Database className="mr-2 h-4 w-4" />
-                Initialize Sample Data
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
+        </Card> */}
+      </div>
     </div>
   )
 }
