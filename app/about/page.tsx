@@ -107,21 +107,21 @@ export default function About() {
                   />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">Abhishek Mishra</h3>
-                <p className="text-gray-600 mb-4">Backend Developer & RGPV Student</p>
+                <p className="text-gray-600 mb-4">Full Stack Developer & RGPV Student</p>
                 <div className="flex justify-center gap-3">
-                  <Link href="https://github.com/abhishekmishra" target="_blank">
+                  <Link href="https://github.com/Abhishek-Mishra-GH" target="_blank">
                     <Button variant="outline" size="sm">
                       <Github className="h-4 w-4 mr-2" />
                       GitHub
                     </Button>
                   </Link>
-                  <Link href="https://linkedin.com/in/abhishekmishra" target="_blank">
+                  <Link href="https://linkedin.com/in/abhishekmishraln" target="_blank">
                     <Button variant="outline" size="sm">
                       <Linkedin className="h-4 w-4 mr-2" />
                       LinkedIn
                     </Button>
                   </Link>
-                  <Link href="https://twitter.com/abhishekmishra" target="_blank">
+                  <Link href="https://x.com/abhishekonx" target="_blank">
                     <Button variant="outline" size="sm">
                       <Twitter className="h-4 w-4 mr-2" />
                       Twitter

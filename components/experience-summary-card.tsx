@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,10 +13,11 @@ import {
   IndianRupee,
   Calendar,
   User,
+  Eye,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
-interface ExperienceCardProps {
+interface ExperienceSummaryCardProps {
   experience: {
     id: string;
     title: string;
@@ -37,28 +39,41 @@ interface ExperienceCardProps {
       likes: number;
       saves: number;
     };
+    isLikedByUser?: boolean;
+    isSavedByUser?: boolean;
   };
   onUpdate: () => void;
 }
 
-export function ExperienceCard({ experience, onUpdate }: ExperienceCardProps) {
+export function ExperienceSummaryCard({
+  experience,
+  onUpdate,
+}: ExperienceSummaryCardProps) {
   const { data: session } = useSession();
+  const router = useRouter();
   const [isLiking, setIsLiking] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [liked, setLiked] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [liked, setLiked] = useState(experience.isLikedByUser || false);
+  const [saved, setSaved] = useState(experience.isSavedByUser || false);
+
+  // Update state when experience prop changes
+  useEffect(() => {
+    setLiked(experience.isLikedByUser || false);
+    setSaved(experience.isSavedByUser || false);
+  }, [experience.isLikedByUser, experience.isSavedByUser]);
 
   const handleLike = async () => {
-    if (!session || isLiking) return;
-
+    if (!session) return;
     setIsLiking(true);
     try {
       const response = await fetch(`/api/experiences/${experience.id}/like`, {
         method: "POST",
       });
-      const data = await response.json();
-      setLiked(data.liked);
-      onUpdate();
+      if (response.ok) {
+        const data = await response.json();
+        setLiked(data.liked);
+        onUpdate();
+      }
     } catch (error) {
       console.error("Failed to toggle like:", error);
     } finally {
@@ -67,20 +82,26 @@ export function ExperienceCard({ experience, onUpdate }: ExperienceCardProps) {
   };
 
   const handleSave = async () => {
-    if (!session || isSaving) return;
-
+    if (!session) return;
     setIsSaving(true);
     try {
       const response = await fetch(`/api/experiences/${experience.id}/save`, {
         method: "POST",
       });
-      const data = await response.json();
-      setSaved(data.saved);
+      if (response.ok) {
+        const data = await response.json();
+        setSaved(data.saved);
+        onUpdate();
+      }
     } catch (error) {
       console.error("Failed to toggle save:", error);
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleViewDetails = () => {
+    router.push(`/experience/${experience.id}`);
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -110,11 +131,11 @@ export function ExperienceCard({ experience, onUpdate }: ExperienceCardProps) {
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader className="pb-4">
+    <Card className="w-full hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
               {experience.title}
             </h3>
             <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 mb-3">
@@ -172,22 +193,14 @@ export function ExperienceCard({ experience, onUpdate }: ExperienceCardProps) {
       </CardHeader>
 
       <CardContent className="pt-0">
-        <div className="prose prose-sm max-w-none mb-4">
-          <p className="text-gray-700 whitespace-pre-wrap">
+        {/* Content preview */}
+        <div className="mb-4">
+          <p className="text-gray-700 text-sm line-clamp-3">
             {experience.content}
           </p>
         </div>
 
-        {experience.tips && (
-          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
-            <h4 className="font-medium text-blue-900 mb-2">💡 Tips</h4>
-            <p className="text-blue-800 text-sm whitespace-pre-wrap">
-              {experience.tips}
-            </p>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between pt-4 border-t">
+        <div className="flex items-center justify-between pt-3 border-t">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
@@ -219,6 +232,16 @@ export function ExperienceCard({ experience, onUpdate }: ExperienceCardProps) {
               </Button>
             )}
           </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleViewDetails}
+            className="flex items-center gap-2"
+          >
+            <Eye className="h-4 w-4" />
+            View Details
+          </Button>
         </div>
       </CardContent>
     </Card>

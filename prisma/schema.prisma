@@ -9,13 +9,13 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String?  @unique
-  name      String?
-  isAnonymous Boolean @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id          String       @id @default(cuid())
+  email       String?      @unique
+  name        String?
+  password    String? // Added password field
+  isAnonymous Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   experiences Experience[]
   likes       Like[]
   saves       Save[]
@@ -38,33 +38,30 @@ model Experience {
   isAnonymous Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  likes  Like[]
-  saves  Save[]
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes       Like[]
+  saves       Save[]
 
   @@map("experiences")
 }
 
 model Like {
-  id           String @id @default(cuid())
+  id           String     @id @default(cuid())
   userId       String
   experienceId String
-
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  experience Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, experienceId])
   @@map("likes")
 }
 
 model Save {
-  id           String @id @default(cuid())
+  id           String     @id @default(cuid())
   userId       String
   experienceId String
-
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  experience Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, experienceId])
   @@map("saves")
