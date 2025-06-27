@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String?  @unique
+  name      String?
+  isAnonymous Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  experiences Experience[]
+  likes       Like[]
+  saves       Save[]
+
+  @@map("users")
+}
+
+model Experience {
+  id          String   @id @default(cuid())
+  title       String
+  company     String
+  position    String
+  content     String
+  salary      String?
+  location    String?
+  difficulty  String
+  outcome     String
+  tips        String?
+  authorId    String
+  isAnonymous Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes  Like[]
+  saves  Save[]
+
+  @@map("experiences")
+}
+
+model Like {
+  id           String @id @default(cuid())
+  userId       String
+  experienceId String
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  experience Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, experienceId])
+  @@map("likes")
+}
+
+model Save {
+  id           String @id @default(cuid())
+  userId       String
+  experienceId String
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  experience Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, experienceId])
+  @@map("saves")
+}
